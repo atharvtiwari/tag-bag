@@ -3,23 +3,26 @@
 
 #define SS_PIN D8
 #define RST_PIN D0
+#define FCE_PIN D2;
+#define TMP_PIN A0;
 #define TOTAL_CARDS 3
 
-MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
+// Instance of the class
+MFRC522 rfid(SS_PIN, RST_PIN);
 MFRC522::MIFARE_Key key;
 
-// Init array that will store new NUID
+// Init 2D array that will store new NUID's
 byte nuidPICC[TOTAL_CARDS][4];
 
-int forcePin = D2;
 int forceReading;
-int tempPin = A0;
 int tempReading;
 int count = 0;
 
+// Function declarations
 void printHex(byte *buffer, byte bufferSize);
 void printDec(byte *buffer, byte bufferSize);
 int checkCardExists(byte *current);
+void printCard(byte *current_card, int size, int num);
 
 void setup()
 {
@@ -53,9 +56,9 @@ void loop()
   digitalWrite(2, LOW); // Turn LED off
   digitalWrite(5, LOW); // Turn Fan off
 
-  // Reading value from FSR
-  forceReading = digitalRead(forcePin);
-  tempReading = analogRead(tempPin);
+  // Reading values from FSR and Temperature Sensor
+  forceReading = digitalRead(FCE_PIN);
+  tempReading = analogRead(TMP_PIN);
 
   if (forceReading)
   {
@@ -67,6 +70,7 @@ void loop()
   }
   if (tempReading > 300)
   {
+    // Logging value from Temp in Serial Monitor
     Serial.print("Temperature: ");
     Serial.println(tempReading / 3.1);
     digitalWrite(5, HIGH); // Turn Fan on
@@ -103,11 +107,11 @@ void loop()
 
   if (card_number == -1 && count == TOTAL_CARDS)
   {
-    Serial.println(F("Can't register any more books"));
+    Serial.println(F("Can't register any more books."));
   }
   else if (card_number == -1)
   { 
-    Serial.println(F("A new card has been detected."));
+    Serial.println(F("A new book has been detected."));
 
     // Store NUID into nuidPICC array
     for (byte i = 0; i < 4; i++)
@@ -115,30 +119,12 @@ void loop()
         nuidPICC[count][i] = rfid.uid.uidByte[i];
     }
     count++;
-    Serial.println(F("The NUID tag is:"));
-    Serial.print(F("In hex: "));
-    printHex(rfid.uid.uidByte, rfid.uid.size);
-    Serial.println();
-    Serial.print(F("In dec: "));
-    printDec(rfid.uid.uidByte, rfid.uid.size);
-    Serial.println();
-    Serial.print(F("Book: "));
-    Serial.print(count);
-    Serial.println();
+    printCard(rfid.uid.uidByte, rfid.uid.size, count);
   }
   else 
   {
     Serial.println(F("Card read previously."));
-    Serial.println(F("The NUID tag is:"));
-    Serial.print(F("In hex: "));
-    printHex(rfid.uid.uidByte, rfid.uid.size);
-    Serial.println();
-    Serial.print(F("In dec: "));
-    printDec(rfid.uid.uidByte, rfid.uid.size);
-    Serial.println();
-    Serial.print(F("Book: "));
-    Serial.print(card_number + 1);
-    Serial.println();
+    printCard(rfid.uid.uidByte, rfid.uid.size, card_number + 1)
   }
   
   // Halt PICC
@@ -174,6 +160,9 @@ void printDec(byte *buffer, byte bufferSize)
   }
 }
 
+/**
+ *  Helper function to check if the card swiped already exists.
+ */
 int checkCardExists(byte *current)
 {
   for (int i = 0; i < TOTAL_CARDS; i++)
@@ -187,4 +176,21 @@ int checkCardExists(byte *current)
     }
   }
   return -1;
+}
+
+/**
+ * Helper function to print the current card being read
+ */
+void printCard(byte *current_card, int size, int num)
+{
+  Serial.println(F("The NUID tag is:"));
+  Serial.print(F("In hex: "));
+  printHex(current_card, size);
+  Serial.println();
+  Serial.print(F("In dec: "));
+  printDec(current_card, size);
+  Serial.println();
+  Serial.print(F("Book: "));
+  Serial.print(num);
+  Serial.println();
 }
