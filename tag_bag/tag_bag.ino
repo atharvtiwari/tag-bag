@@ -3,8 +3,6 @@
 
 #define SS_PIN D8
 #define RST_PIN D0
-#define FCE_PIN D2;
-#define TMP_PIN A0;
 #define TOTAL_CARDS 3
 
 // Instance of the class
@@ -14,6 +12,8 @@ MFRC522::MIFARE_Key key;
 // Init 2D array that will store new NUID's
 byte nuidPICC[TOTAL_CARDS][4];
 
+int FCE_PIN = D2;
+int TMP_PIN = A0;
 int forceReading;
 int tempReading;
 int count = 0;
@@ -32,7 +32,7 @@ void setup()
   SPI.begin();          // Init SPI bus
   rfid.PCD_Init();      // Init MFRC522
   Serial.println();
-  Serial.print(F("RFID :"));
+  Serial.print("RFID :");
   rfid.PCD_DumpVersionToSerial();
 
   for (byte i = 0; i < 6; i++)
@@ -41,8 +41,8 @@ void setup()
   }
 
   Serial.println();
-  Serial.println(F("This code scan the MIFARE Classic NUID."));
-  Serial.print(F("Using the following key:"));
+  Serial.println("This code scan the MIFARE Classic NUID.");
+  Serial.print("Using the following key:");
   printHex(key.keyByte, MFRC522::MF_KEY_SIZE);
   
   pinMode(2, OUTPUT); // LED
@@ -90,7 +90,7 @@ void loop()
   if (!rfid.PICC_ReadCardSerial())
     return;
 
-  Serial.print(F("PICC type: "));
+  Serial.print("PICC type: ");
   MFRC522::PICC_Type piccType = rfid.PICC_GetType(rfid.uid.sak);
   Serial.println(rfid.PICC_GetTypeName(piccType));
 
@@ -99,7 +99,7 @@ void loop()
       piccType != MFRC522::PICC_TYPE_MIFARE_1K &&
       piccType != MFRC522::PICC_TYPE_MIFARE_4K)
   {
-    Serial.println(F("Your tag is not of type MIFARE Classic."));
+    Serial.println("Your tag is not of type MIFARE Classic.");
     return;
   }
 
@@ -107,11 +107,11 @@ void loop()
 
   if (card_number == -1 && count == TOTAL_CARDS)
   {
-    Serial.println(F("Can't register any more books."));
+    Serial.println("Can't register any more books.");
   }
   else if (card_number == -1)
   { 
-    Serial.println(F("A new book has been detected."));
+    Serial.println("A new book has been detected.");
 
     // Store NUID into nuidPICC array
     for (byte i = 0; i < 4; i++)
@@ -123,7 +123,7 @@ void loop()
   }
   else 
   {
-    Serial.println(F("Card read previously."));
+    Serial.println("Card read previously.");
     printCard(rfid.uid.uidByte, rfid.uid.size, card_number + 1)
   }
   
@@ -183,14 +183,14 @@ int checkCardExists(byte *current)
  */
 void printCard(byte *current_card, int size, int num)
 {
-  Serial.println(F("The NUID tag is:"));
-  Serial.print(F("In hex: "));
+  Serial.println("The NUID tag is:");
+  Serial.print("In hex: ");
   printHex(current_card, size);
   Serial.println();
-  Serial.print(F("In dec: "));
+  Serial.print("In dec: ");
   printDec(current_card, size);
   Serial.println();
-  Serial.print(F("Book: "));
+  Serial.print("Book: ");
   Serial.print(num);
   Serial.println();
 }
