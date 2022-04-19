@@ -21,18 +21,18 @@ int count = 0;
 // Function declarations
 void printHex(byte *buffer, byte bufferSize);
 void printDec(byte *buffer, byte bufferSize);
-int checkCardExists(byte *current);
-void printCard(byte *current_card, int size, int num);
+int checkCardExists();
+void printCard(int num = count);
 
 void setup()
 {
   // put your setup code here, to run once:
 
-  Serial.begin(115200); // Serial Monitor for FSR readings
+  Serial.begin(115200); // Serial Monitor for readings
   SPI.begin();          // Init SPI bus
   rfid.PCD_Init();      // Init MFRC522
   Serial.println();
-  Serial.print("RFID :");
+  Serial.print("RFID: ");
   rfid.PCD_DumpVersionToSerial();
 
   for (byte i = 0; i < 6; i++)
@@ -41,10 +41,11 @@ void setup()
   }
 
   Serial.println();
-  Serial.println("This code scan the MIFARE Classic NUID.");
+  Serial.println("This module scans MIFARE Classic NUID.");
   Serial.print("Using the following key:");
   printHex(key.keyByte, MFRC522::MF_KEY_SIZE);
-  
+  Serial.println();
+
   pinMode(2, OUTPUT); // LED
   pinMode(5, OUTPUT); // Fan
 }
@@ -63,18 +64,30 @@ void loop()
   if (forceReading)
   {
     // Logging value from FSR in Serial Monitor
+    Serial.println();
     Serial.print("Force: ");
     Serial.println(forceReading);
     digitalWrite(2, HIGH); // Turn LED on
-    delay(100);
+    // if buzzer, uncomment below lines
+    //delay(100);
+    //digitalWrite(2, LOW);
+    delay(1000);  
   }
-  if (tempReading > 300)
+  
+  // Check and change temperature threshold and multiplier
+  if (tempReading > 31)
   {
+    int newTempReading = tempReading / 3.1;
+    
     // Logging value from Temp in Serial Monitor
+    Serial.println();
     Serial.print("Temperature: ");
-    Serial.println(tempReading / 3.1);
-    digitalWrite(5, HIGH); // Turn Fan on
-    delay(100);
+    Serial.println(newTempReading);
+    if (newTempReading > 70)
+    {
+      digitalWrite(5, HIGH); // Turn Fan on
+      delay(1000);
+    }
   }
   else
   {
@@ -90,6 +103,7 @@ void loop()
   if (!rfid.PICC_ReadCardSerial())
     return;
 
+  Serial.println();
   Serial.print("PICC type: ");
   MFRC522::PICC_Type piccType = rfid.PICC_GetType(rfid.uid.sak);
   Serial.println(rfid.PICC_GetTypeName(piccType));
@@ -103,30 +117,30 @@ void loop()
     return;
   }
 
-  int card_number = checkCardExists(rfid.uid.uidByte);
+  int card_number = checkCardExists();
 
   if (card_number == -1 && count == TOTAL_CARDS)
   {
     Serial.println("Can't register any more books.");
   }
   else if (card_number == -1)
-  { 
+  {
     Serial.println("A new book has been detected.");
 
     // Store NUID into nuidPICC array
     for (byte i = 0; i < 4; i++)
     {
-        nuidPICC[count][i] = rfid.uid.uidByte[i];
+      nuidPICC[count][i] = rfid.uid.uidByte[i];
     }
     count++;
-    printCard(rfid.uid.uidByte, rfid.uid.size, count);
+    printCard();
   }
-  else 
+  else
   {
-    Serial.println("Card read previously.");
-    printCard(rfid.uid.uidByte, rfid.uid.size, card_number + 1)
+    Serial.println("Book already registered.");
+    printCard(card_number + 1);
   }
-  
+
   // Halt PICC
   rfid.PICC_HaltA();
 
@@ -136,7 +150,7 @@ void loop()
   delay(1000);
 }
 
-/**
+/*
    Helper routine to dump a byte array as hex values to Serial.
 */
 void printHex(byte *buffer, byte bufferSize)
@@ -148,7 +162,7 @@ void printHex(byte *buffer, byte bufferSize)
   }
 }
 
-/**
+/*
    Helper routine to dump a byte array as dec values to Serial.
 */
 void printDec(byte *buffer, byte bufferSize)
@@ -160,17 +174,17 @@ void printDec(byte *buffer, byte bufferSize)
   }
 }
 
-/**
- *  Helper function to check if the card swiped already exists.
- */
-int checkCardExists(byte *current)
+/*
+    Helper function to check if the card swiped already exists.
+*/
+int checkCardExists()
 {
   for (int i = 0; i < TOTAL_CARDS; i++)
   {
-    if (current[0] == nuidPICC[i][0] &&
-        current[1] == nuidPICC[i][1] &&
-        current[2] == nuidPICC[i][2] &&
-        current[3] == nuidPICC[i][3])
+    if (rfid.uid.uidByte[0] == nuidPICC[i][0] &&
+        rfid.uid.uidByte[1] == nuidPICC[i][1] &&
+        rfid.uid.uidByte[2] == nuidPICC[i][2] &&
+        rfid.uid.uidByte[3] == nuidPICC[i][3])
     {
       return i;
     }
@@ -178,17 +192,17 @@ int checkCardExists(byte *current)
   return -1;
 }
 
-/**
- * Helper function to print the current card being read
- */
-void printCard(byte *current_card, int size, int num)
+/*
+   Helper function to print the current card being read
+*/
+void printCard(int num)
 {
   Serial.println("The NUID tag is:");
   Serial.print("In hex: ");
-  printHex(current_card, size);
+  printHex(rfid.uid.uidByte, rfid.uid.size);
   Serial.println();
   Serial.print("In dec: ");
-  printDec(current_card, size);
+  printDec(rfid.uid.uidByte, rfid.uid.size);
   Serial.println();
   Serial.print("Book: ");
   Serial.print(num);
